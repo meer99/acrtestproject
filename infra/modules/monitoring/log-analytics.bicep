@@ -1,19 +1,38 @@
-@description('This template deploys an Azure Log Analytics Workspace.')
-param workspaceName string = 'myLogAnalyticsWorkspace'
+@description('Name of the Log Analytics Workspace')
+param name string
+@description('Location for the Log Analytics Workspace')
 param location string = resourceGroup().location
+@description('SKU name')
+@allowed(['PerGB2018','Free','Standalone','PerNode','Standard','Premium'])
+param skuName string = 'PerGB2018'
+@description('Retention in days')
+@minValue(30)
+@maxValue(730)
+param retentionInDays int = 30
+@description('Tags for the resource')
+param tags object = {}
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2020-08-01' = {
-  name: workspaceName
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: name
   location: location
+  tags: tags
   properties: {
     sku: {
-      name: 'PerGB2018'
+      name: skuName
     }
-    retentionInDays: 30
+    retentionInDays: retentionInDays
     features: {
-      searchTrafficAnalytics: true
+      enableLogAccessUsingOnlyResourcePermissions: true
     }
+    workspaceCapping: {
+      dailyQuotaGb: -1
+    }
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
   }
 }
 
-output primaryKey string = listKeys(logAnalytics.id, '2020-08-01').primarySharedAccessKey
+output id string = logAnalyticsWorkspace.id
+output name string = logAnalyticsWorkspace.name
+output customerId string = logAnalyticsWorkspace.properties.customerId
+output primarySharedKey string = listKeys(logAnalyticsWorkspace.id, '2022-10-01').primarySharedKey
